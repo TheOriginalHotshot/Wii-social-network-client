@@ -1,0 +1,18 @@
+# This is a basic Makefile for compiling a Wii homebrew application
+
+# Specify the target name of your application
+TARGET       := my_wii_app
+BUILD        := build
+SOURCES      := source
+DATA         := data
+INCLUDES     := include
+
+# Compiler and linker flags
+LIBS         := -logc -lm
+CFLAGS       := -std=c++11 -O2 -Wall
+
+# Specify the tools from devkitPro
+include $(DEVKITPPC)/wii_rules
+
+# The following rule builds your final .dol file
+$(BUILD)/$(TARGET).dol: $(OFILES)
