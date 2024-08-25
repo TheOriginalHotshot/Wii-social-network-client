@@ -1,0 +1,124 @@
+#include <gccore.h>
+#include <grrlib.h>
+#include <wiiuse/wpad.h>
+#include <ogcsys.h>
+#include <fat.h>
+#include <stdlib.h>
+
+// Screen dimensions
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
+
+// Define button structure
+typedef struct {
+    int x, y, width, height;
+    const char* label;
+    bool isHovered;
+    void (*action)();
+} Button;
+
+// Forward declarations
+void MainMenu();
+void SettingsMenu();
+void ExitApp();
+
+// Define screen types
+enum ScreenType { MAIN_MENU, SETTINGS_MENU } currentScreen = MAIN_MENU;
+
+// Button actions
+void GoToSettings() {
+    currentScreen = SETTINGS_MENU;
+}
+
+void GoToMainMenu() {
+    currentScreen = MAIN_MENU;
+}
+
+void ExitApp() {
+    GRRLIB_Exit();
+    exit(0);
+}
+
+// Draw a button with hover effect
+void DrawButton(Button *button, WPADData *data) {
+    button->isHovered = false;
+
+    if (data->ir.valid) {
+        int cursorX = data->ir.x;
+        int cursorY = data->ir.y;
+
+        if (cursorX >= button->x && cursorX <= button->x + button->width &&
+            cursorY >= button->y && cursorY <= button->y + button->height) {
+            button->isHovered = true;
+            GRRLIB_Rectangle(button->x, button->y, button->width, button->height, 0x00FF00FF, true);
+        }
+    }
+
+    if (!button->isHovered) {
+        GRRLIB_Rectangle(button->x, button->y, button->width, button->height, 0xFFFFFFFF, true);
+    }
+
+    GRRLIB_Printf(button->x + 10, button->y + 15, GRRLIB_LoadFont(defaultfont_png), 0x000000FF, 1, button->label);
+
+    if (button->isHovered && (WPAD_ButtonsDown(0) & WPAD_BUTTON_A)) {
+        button->action();
+    }
+}
+
+// Main Menu screen
+void MainMenu() {
+    WPAD_ScanPads();
+    WPADData *data = WPAD_Data(0);
+
+    Button buttons[] = {
+        { 220, 150, 200, 50, "Settings", false, GoToSettings },
+        { 220, 220, 200, 50, "Exit", false, ExitApp },
+    };
+
+    for (int i = 0; i < 2; i++) {
+        DrawButton(&buttons[i], data);
+    }
+}
+
+// Settings screen
+void SettingsMenu() {
+    WPAD_ScanPads();
+    WPADData *data = WPAD_Data(0);
+
+    Button backButton = { 220, 300, 200, 50, "Back to Main Menu", false, GoToMainMenu };
+    DrawButton(&backButton, data);
+
+    // Example setting toggle (not implemented in full detail)
+    GRRLIB_Printf(240, 150, GRRLIB_LoadFont(defaultfont_png), 0xFFFFFFFF, 1, "Setting 1: ON");
+    GRRLIB_Printf(240, 200, GRRLIB_LoadFont(defaultfont_png), 0xFFFFFFFF, 1, "Setting 2: OFF");
+}
+
+int main(int argc, char **argv) {
+    VIDEO_Init();
+    WPAD_Init();
+    fatInitDefault();
+
+    GRRLIB_Init();
+    GRRLIB_Settings.antialias = true;
+
+    // Main loop
+    while (1) {
+        GRRLIB_2dMode();
+        GRRLIB_FillScreen(0x000000FF);  // Clear screen with black
+
+        switch (currentScreen) {
+            case MAIN_MENU:
+                MainMenu();
+                break;
+            case SETTINGS_MENU:
+                SettingsMenu();
+                break;
+        }
+
+        GRRLIB_Render();
+        VIDEO_WaitVSync();
+    }
+
+    GRRLIB_Exit();
+    return 0;
+}
