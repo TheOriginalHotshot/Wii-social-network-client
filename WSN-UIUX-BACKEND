@@ -1,0 +1,154 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <map>
+
+class AppState {
+public:
+    enum Screen { MAIN_MENU, SETTINGS_MENU, EXIT };
+    
+private:
+    Screen currentScreen;
+    std::map<std::string, bool> settings;  // Store settings as key-value pairs
+
+public:
+    AppState() : currentScreen(MAIN_MENU) {
+        // Initialize default settings
+        settings["Setting1"] = true;
+        settings["Setting2"] = false;
+    }
+
+    // Get the current screen
+    Screen getCurrentScreen() {
+        return currentScreen;
+    }
+
+    // Set the current screen
+    void setCurrentScreen(Screen screen) {
+        currentScreen = screen;
+    }
+
+    // Toggle a setting
+    void toggleSetting(const std::string &key) {
+        if (settings.find(key) != settings.end()) {
+            settings[key] = !settings[key];
+        }
+    }
+
+    // Get the value of a setting
+    bool getSetting(const std::string &key) {
+        if (settings.find(key) != settings.end()) {
+            return settings[key];
+        }
+        return false;
+    }
+
+    // Save settings to a file
+    void saveSettings(const std::string &filename) {
+        std::ofstream outFile(filename);
+        if (outFile.is_open()) {
+            for (const auto &pair : settings) {
+                outFile << pair.first << "=" << (pair.second ? "true" : "false") << "\n";
+            }
+            outFile.close();
+        }
+    }
+
+    // Load settings from a file
+    void loadSettings(const std::string &filename) {
+        std::ifstream inFile(filename);
+        if (inFile.is_open()) {
+            std::string line;
+            while (std::getline(inFile, line)) {
+                size_t delimPos = line.find('=');
+                if (delimPos != std::string::npos) {
+                    std::string key = line.substr(0, delimPos);
+                    std::string value = line.substr(delimPos + 1);
+                    settings[key] = (value == "true");
+                }
+            }
+            inFile.close();
+        }
+    }
+};
+
+class Backend {
+private:
+    AppState state;
+
+public:
+    // Initialize the backend
+    Backend() {
+        state.loadSettings("settings.txt");
+    }
+
+    // Process input from the UI
+    void processInput(const std::string &input) {
+        if (input == "goToSettings") {
+            state.setCurrentScreen(AppState::SETTINGS_MENU);
+        } else if (input == "goToMainMenu") {
+            state.setCurrentScreen(AppState::MAIN_MENU);
+        } else if (input == "toggleSetting1") {
+            state.toggleSetting("Setting1");
+        } else if (input == "toggleSetting2") {
+            state.toggleSetting("Setting2");
+        } else if (input == "exitApp") {
+            state.setCurrentScreen(AppState::EXIT);
+            state.saveSettings("settings.txt");
+            std::cout << "Exiting application..." << std::endl;
+            exit(0);
+        }
+    }
+
+    // Get the current screen
+    AppState::Screen getCurrentScreen() {
+        return state.getCurrentScreen();
+    }
+
+    // Display the current settings (for debugging)
+    void displaySettings() {
+        std::cout << "Setting1: " << (state.getSetting("Setting1") ? "ON" : "OFF") << std::endl;
+        std::cout << "Setting2: " << (state.getSetting("Setting2") ? "ON" : "OFF") << std::endl;
+    }
+};
+
+int main() {
+    Backend backend;
+
+    while (true) {
+        AppState::Screen screen = backend.getCurrentScreen();
+        
+        if (screen == AppState::MAIN_MENU) {
+            std::cout << "Main Menu" << std::endl;
+            std::cout << "1. Go to Settings" << std::endl;
+            std::cout << "2. Exit" << std::endl;
+            std::string choice;
+            std::cin >> choice;
+
+            if (choice == "1") {
+                backend.processInput("goToSettings");
+            } else if (choice == "2") {
+                backend.processInput("exitApp");
+            }
+
+        } else if (screen == AppState::SETTINGS_MENU) {
+            std::cout << "Settings Menu" << std::endl;
+            backend.displaySettings();
+            std::cout << "1. Toggle Setting 1" << std::endl;
+            std::cout << "2. Toggle Setting 2" << std::endl;
+            std::cout << "3. Back to Main Menu" << std::endl;
+            std::string choice;
+            std::cin >> choice;
+
+            if (choice == "1") {
+                backend.processInput("toggleSetting1");
+            } else if (choice == "2") {
+                backend.processInput("toggleSetting2");
+            } else if (choice == "3") {
+                backend.processInput("goToMainMenu");
+            }
+        }
+    }
+
+    return 0;
+}
